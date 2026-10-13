@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptWars Countdown - VVITU</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-10vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 1;
+            padding: 2rem;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #a78bfa;
+            margin-bottom: 0.5rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #f97316, #eab308, #22c55e, #3b82f6, #a855f7);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease infinite, fadeInDown 1s ease-out 0.2s both;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            animation: fadeInDown 1s ease-out 0.4s both;
+        }
+
+        .countdown {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 3rem 0;
+            flex-wrap: wrap;
+            animation: fadeInDown 1s ease-out 0.6s both;
+        }
+
+        .time-block {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            min-width: 110px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .time-block:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(168, 85, 247, 0.2);
+        }
+
+        .time-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #e2e8f0;
+        }
+
+        .time-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #a78bfa;
+            margin-top: 0.5rem;
+        }
+
+        .event-info {
+            margin-top: 1rem;
+            animation: fadeInDown 1s ease-out 0.8s both;
+        }
+
+        .event-info p {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin: 0.3rem 0;
+        }
+
+        .event-info .highlight {
+            color: #f97316;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(168, 85, 247, 0); }
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 1.5rem;
+            color: #475569;
+            font-size: 0.8rem;
+            z-index: 1;
+        }
+
+        .footer a {
+            color: #a78bfa;
+            text-decoration: none;
+        }
+
+        /* Event started state */
+        .live-badge {
+            display: none;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            padding: 0.6rem 2rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .live-badge.active {
+            display: inline-block;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .title {
+                font-size: 2.2rem;
+            }
+            .countdown {
+                gap: 0.8rem;
+            }
+            .time-block {
+                min-width: 70px;
+                padding: 1rem 1.2rem;
+            }
+            .time-value {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <div class="logo">VVIT University Presents</div>
+        <h1 class="title">⚡ PromptWars 2026</h1>
+        <p class="subtitle">Build. Prompt. Deploy. Conquer.</p>
+
+        <div class="countdown" id="countdown">
+            <div class="time-block">
+                <div class="time-value" id="hours">00</div>
+                <div class="time-label">Hours</div>
+            </div>
+            <div class="time-block">
+                <div class="time-value" id="minutes">00</div>
+                <div class="time-label">Minutes</div>
+            </div>
+            <div class="time-block">
+                <div class="time-value" id="seconds">00</div>
+                <div class="time-label">Seconds</div>
+            </div>
+        </div>
+
+        <div class="event-info">
+            <p>📅 <span class="highlight">October 14, 2026</span></p>
+            <p>📍 VVITU Campus | 🕐 Starts at 9:00 AM IST</p>
+        </div>
+
+        <div class="badge">🤖 AI-Powered Hackathon</div>
+        <div class="live-badge" id="liveBadge">🔴 EVENT IS LIVE NOW!</div>
+    </div>
+
+    <div class="footer">
+        Built with ❤️ and AI by <a href="https://github.com/Pulibandla-Jithendra" target="_blank">Jithendra</a>
+    </div>
+
+    <script>
+        // Create floating particles
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
+            particle.style.animationDelay = (Math.random() * 10) + 's';
+            particle.style.width = particle.style.height = (Math.random() * 4 + 2) + 'px';
+            particlesContainer.appendChild(particle);
+        }
+
+        // Countdown timer
+        const eventDate = new Date('October 14, 2026 09:00:00 GMT+0530').getTime();
+
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = eventDate - now;
+
+            if (distance <= 0) {
+                document.getElementById('hours').textContent = '00';
+                document.getElementById('minutes').textContent = '00';
+                document.getElementById('seconds').textContent = '00';
+                document.getElementById('liveBadge').classList.add('active');
+                document.querySelector('.badge').style.display = 'none';
+                return;
+            }
+
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+            document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+            document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+        }
+
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>
