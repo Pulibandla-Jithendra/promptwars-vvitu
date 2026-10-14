@@ -2,6 +2,7 @@ import { ComplaintStatus, Priority } from '../types';
 
 const statusConfig: Record<ComplaintStatus, { label: string; className: string }> = {
   'submitted': { label: 'Submitted', className: 'badge-submitted' },
+  'under-review': { label: 'Under Review', className: 'badge-review' },
   'in-progress': { label: 'In Progress', className: 'badge-progress' },
   'resolved': { label: 'Resolved', className: 'badge-resolved' },
   'escalated': { label: 'Escalated', className: 'badge-escalated' },

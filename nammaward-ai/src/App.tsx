@@ -1,26 +1,37 @@
 import { useState, useMemo } from 'react';
 import { Complaint, ComplaintCategory, DashboardStats } from './types';
-import { sampleComplaints } from './data/sampleComplaints';
+import { useAuth } from './context/AuthContext';
+import { useComplaints } from './context/ComplaintContext';
 import StatsCards from './components/StatsCards';
 import CategoryFilter from './components/CategoryFilter';
 import ComplaintCard from './components/ComplaintCard';
 import ComplaintDetail from './components/ComplaintDetail';
 import ComplaintForm from './components/ComplaintForm';
 import CommunityInsights from './components/CommunityInsights';
+import LoginPage from './components/LoginPage';
+import StaffDashboard from './components/StaffDashboard';
 import './App.css';
 
-function App() {
-  const [complaints, setComplaints] = useState<Complaint[]>(sampleComplaints);
+function CitizenDashboard() {
+  const { user, logout } = useAuth();
+  const { complaints, addComplaint } = useComplaints();
   const [selectedCategory, setSelectedCategory] = useState<ComplaintCategory | 'all'>('all');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [showMyComplaints, setShowMyComplaints] = useState(false);
 
-  const filteredComplaints = useMemo(() => {
-    if (selectedCategory === 'all') return complaints;
-    return complaints.filter((c) => c.category === selectedCategory);
-  }, [complaints, selectedCategory]);
+  const displayedComplaints = useMemo(() => {
+    let list = complaints;
+    if (showMyComplaints && user) {
+      list = list.filter(c => c.submittedBy === user.id);
+    }
+    if (selectedCategory !== 'all') {
+      list = list.filter(c => c.category === selectedCategory);
+    }
+    return list;
+  }, [complaints, selectedCategory, showMyComplaints, user]);
 
   const stats: DashboardStats = useMemo(() => ({
     total: complaints.length,
@@ -30,7 +41,7 @@ function App() {
   }), [complaints]);
 
   const handleNewComplaint = (complaint: Complaint) => {
-    setComplaints((prev) => [complaint, ...prev]);
+    addComplaint(complaint);
     setShowForm(false);
     setShowSuccess(complaint.id);
     setTimeout(() => setShowSuccess(null), 5000);
@@ -45,27 +56,24 @@ function App() {
             <div className="logo-icon">🏛️</div>
             <div>
               <h1 className="app-title">NammaWard AI</h1>
-              <p className="app-subtitle">AI-Powered Civic Issue Tracker</p>
+              <p className="app-subtitle">👋 Hi, {user?.name}</p>
             </div>
           </div>
           <div className="header-right">
-            <button
-              className="insights-btn"
-              onClick={() => setShowInsights(!showInsights)}
-            >
-              📊 {showInsights ? 'Hide' : 'Show'} Insights
+            <button className="insights-btn" onClick={() => setShowInsights(!showInsights)}>
+              📊 Insights
             </button>
             <button className="report-btn" onClick={() => setShowForm(true)}>
-              ➕ Report Issue
+              ➕ Report
             </button>
+            <button className="logout-btn" onClick={logout}>🚪</button>
           </div>
         </div>
       </header>
 
       {/* Disclaimer banner */}
       <div className="disclaimer-banner">
-        ⚠️ <strong>Prototype Demo</strong> — This is a hackathon project showcasing AI-powered civic governance.
-        Not connected to any municipal authority. All data is fictional.
+        ⚠️ <strong>Prototype Demo</strong> — Hackathon project. Not connected to any municipal authority. All data is fictional.
       </div>
 
       {/* Success toast */}
@@ -85,20 +93,33 @@ function App() {
         {/* Filter + List */}
         <section className="complaints-section">
           <div className="section-header">
-            <h2>📋 Recent Complaints</h2>
-            <span className="complaint-count">{filteredComplaints.length} issues</span>
+            <h2>📋 {showMyComplaints ? 'My Complaints' : 'Recent Complaints'}</h2>
+            <div className="section-actions">
+              <button
+                className={`toggle-btn ${showMyComplaints ? 'active' : ''}`}
+                onClick={() => setShowMyComplaints(!showMyComplaints)}
+              >
+                {showMyComplaints ? '🌐 All' : '👤 Mine'}
+              </button>
+              <span className="complaint-count">{displayedComplaints.length} issues</span>
+            </div>
           </div>
 
           <CategoryFilter selected={selectedCategory} onChange={setSelectedCategory} />
 
           <div className="complaints-grid">
-            {filteredComplaints.length === 0 ? (
+            {displayedComplaints.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-icon">🔍</span>
-                <p>No complaints found in this category</p>
+                <p>{showMyComplaints ? "You haven't submitted any complaints yet" : 'No complaints found in this category'}</p>
+                {showMyComplaints && (
+                  <button className="report-btn" onClick={() => setShowForm(true)} style={{ marginTop: '1rem' }}>
+                    ➕ Report Your First Issue
+                  </button>
+                )}
               </div>
             ) : (
-              filteredComplaints.map((complaint) => (
+              displayedComplaints.map((complaint) => (
                 <ComplaintCard
                   key={complaint.id}
                   complaint={complaint}
@@ -144,6 +165,14 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+  const { isAuthenticated, isRole } = useAuth();
+
+  if (!isAuthenticated) return <LoginPage />;
+  if (isRole('staff')) return <StaffDashboard />;
+  return <CitizenDashboard />;
 }
 
 export default App;

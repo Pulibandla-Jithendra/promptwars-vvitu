@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Complaint, ComplaintCategory, Priority } from '../types';
+import { useAuth } from '../context/AuthContext';
+import CameraCapture from './CameraCapture';
 
 interface ComplaintFormProps {
   onSubmit: (complaint: Complaint) => void;
@@ -16,10 +18,12 @@ const categoryOptions: { value: ComplaintCategory; label: string }[] = [
 ];
 
 export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ComplaintCategory>('garbage');
   const [locality, setLocality] = useState('');
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -83,6 +87,8 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
         priority: aiAnalysis.aiPriority || 'medium',
         createdAt: new Date().toISOString(),
         upvotes: 1,
+        submittedBy: user?.id || 'anonymous',
+        photoDataUrl,
         ...aiAnalysis,
       };
 
@@ -150,6 +156,13 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
             />
             {errors.description && <span className="error-text">{errors.description}</span>}
           </div>
+
+          {/* Camera Capture */}
+          <CameraCapture
+            onCapture={setPhotoDataUrl}
+            onRemove={() => setPhotoDataUrl(undefined)}
+            currentPhoto={photoDataUrl}
+          />
 
           <button type="submit" className="submit-btn" disabled={isSubmitting}>
             {isSubmitting ? (
