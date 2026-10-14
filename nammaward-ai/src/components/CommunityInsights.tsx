@@ -29,17 +29,15 @@ export default function CommunityInsights({ complaints }: CommunityInsightsProps
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
-  const resolutionRate = complaints.length > 0
-    ? Math.round((complaints.filter(c => c.status === 'resolved').length / complaints.length) * 100)
-    : 0;
-
-  const totalUpvotes = complaints.reduce((sum, c) => sum + c.upvotes, 0);
+  const confirmedCount = complaints.filter(c => c.status === 'resolved').length;
+  const awaitingCount = complaints.filter(c => c.status === 'awaiting-confirmation').length;
+  const disputedCount = complaints.filter(c => c.status === 'disputed').length;
 
   return (
     <div className="insights-section">
       <div className="insights-header">
         <h3>🏘️ Community Insights</h3>
-        <span className="ai-demo-badge">AI-Powered Analysis (Demo)</span>
+        <span className="ai-demo-badge">Local record summary</span>
       </div>
 
       <div className="insights-grid">
@@ -65,26 +63,26 @@ export default function CommunityInsights({ complaints }: CommunityInsightsProps
           <h4>Key Metrics</h4>
           <div className="metrics-list">
             <div className="metric-row">
-              <span>Resolution Rate</span>
-              <span className="metric-value">{resolutionRate}%</span>
+              <span>Citizen-confirmed</span>
+              <span className="metric-value">{confirmedCount}</span>
             </div>
             <div className="metric-row">
-              <span>Community Engagement</span>
-              <span className="metric-value">{totalUpvotes} upvotes</span>
+              <span>Awaiting citizen review</span>
+              <span className="metric-value">{awaitingCount}</span>
             </div>
             <div className="metric-row">
-              <span>Avg. Response Time</span>
-              <span className="metric-value">~18 hours</span>
+              <span>Disputed by citizens</span>
+              <span className="metric-value">{disputedCount}</span>
             </div>
             <div className="metric-row">
-              <span>Active Wards</span>
+              <span>Distinct locality labels</span>
               <span className="metric-value">{Object.keys(localityCounts).length}</span>
             </div>
           </div>
         </div>
 
         <div className="insight-card">
-          <h4>🔥 Hotspot Areas</h4>
+          <h4>📍 Top Report Localities</h4>
           <div className="hotspot-list">
             {topLocalities.map(([locality, count], i) => (
               <div key={locality} className="hotspot-row">
@@ -96,8 +94,8 @@ export default function CommunityInsights({ complaints }: CommunityInsightsProps
           </div>
 
           <div className="ai-insight-box">
-            <span className="ai-icon">🤖</span>
-            <p>AI Recommendation: Allocate additional sanitation and road maintenance resources to Ward 15 and Ward 7 based on complaint density and severity patterns.</p>
+            <span className="ai-icon">📊</span>
+            <p>Counts group reports by their entered category and exact locality text. This demo does not infer causes, map nearby reports, or generate AI recommendations.</p>
           </div>
         </div>
       </div>

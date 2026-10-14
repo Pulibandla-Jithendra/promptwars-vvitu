@@ -1,31 +1,41 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useComplaints } from '../context/ComplaintContext';
-import { Complaint, ComplaintCategory, ComplaintStatus, DashboardStats } from '../types';
+import { Complaint, ComplaintCategory, ComplaintStatus, DashboardStats, StaffProgressStatus } from '../types';
 import { StatusBadge, PriorityBadge } from './StatusBadge';
+import CameraCapture from './CameraCapture';
 
-const statusOptions: { value: ComplaintStatus; label: string }[] = [
+const statusOptions: { value: StaffProgressStatus; label: string }[] = [
   { value: 'submitted', label: '📥 Submitted' },
   { value: 'under-review', label: '🔍 Under Review' },
   { value: 'in-progress', label: '🔄 In Progress' },
-  { value: 'resolved', label: '✅ Resolved' },
   { value: 'escalated', label: '🚨 Escalated' },
+];
+
+const filterStatusOptions: { value: ComplaintStatus; label: string }[] = [
+  ...statusOptions,
+  { value: 'awaiting-confirmation', label: '👀 Awaiting Citizen Review' },
+  { value: 'disputed', label: '↩️ Citizen Disputed' },
+  { value: 'resolved', label: '✅ Citizen Confirmed' },
 ];
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
-  const { complaints, updateStatus, toggleUrgent } = useComplaints();
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const { complaints, updateStatus, proposeResolution, toggleUrgent } = useComplaints();
+  const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const selectedComplaint = complaints.find(c => c.id === selectedComplaintId) || null;
   const [filterStatus, setFilterStatus] = useState<ComplaintStatus | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ComplaintCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [reviewNote, setReviewNote] = useState('');
-  const [newStatus, setNewStatus] = useState<ComplaintStatus>('under-review');
+  const [newStatus, setNewStatus] = useState<StaffProgressStatus>('under-review');
+  const [resolutionNote, setResolutionNote] = useState('');
+  const [resolutionPhoto, setResolutionPhoto] = useState<string | undefined>();
 
   const stats: DashboardStats = useMemo(() => ({
     total: complaints.length,
     submitted: complaints.filter(c => c.status === 'submitted').length,
-    underReview: complaints.filter(c => c.status === 'under-review').length,
+    underReview: complaints.filter(c => c.status === 'under-review' || c.status === 'disputed').length,
     inProgress: complaints.filter(c => c.status === 'in-progress').length,
     resolved: complaints.filter(c => c.status === 'resolved').length,
     critical: complaints.filter(c => c.priority === 'critical' || c.flaggedUrgent).length,
@@ -52,8 +62,13 @@ export default function StaffDashboard() {
       statusChange: newStatus,
     });
     setReviewNote('');
-    // Refresh selected complaint
-    setSelectedComplaint(prev => prev ? { ...prev, status: newStatus } : null);
+  };
+
+  const handleProposeResolution = () => {
+    if (!selectedComplaint || !resolutionNote.trim()) return;
+    proposeResolution(selectedComplaint.id, resolutionNote, resolutionPhoto, user?.name || 'Staff');
+    setResolutionNote('');
+    setResolutionPhoto(undefined);
   };
 
   return (
@@ -91,7 +106,7 @@ export default function StaffDashboard() {
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
             <div className="stat-icon" style={{ background: '#fffbeb' }}>🔍</div>
-            <div className="stat-info"><span className="stat-value">{stats.underReview}</span><span className="stat-label">Reviewing</span></div>
+                  <div className="stat-info"><span className="stat-value">{stats.underReview}</span><span className="stat-label">Reviewing / disputed</span></div>
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>🔄</div>
@@ -100,6 +115,10 @@ export default function StaffDashboard() {
           <div className="stat-card" style={{ borderLeft: '4px solid #22c55e' }}>
             <div className="stat-icon" style={{ background: '#f0fdf4' }}>✅</div>
             <div className="stat-info"><span className="stat-value">{stats.resolved}</span><span className="stat-label">Resolved</span></div>
+          </div>
+          <div className="stat-card" style={{ borderLeft: '4px solid #0ea5e9' }}>
+            <div className="stat-icon" style={{ background: '#f0f9ff' }}>👀</div>
+            <div className="stat-info"><span className="stat-value">{complaints.filter(c => c.status === 'awaiting-confirmation').length}</span><span className="stat-label">Awaiting citizen</span></div>
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
             <div className="stat-icon" style={{ background: '#fef2f2' }}>🚨</div>
@@ -118,7 +137,7 @@ export default function StaffDashboard() {
           />
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="staff-select">
             <option value="all">All Statuses</option>
-            {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            {filterStatusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as any)} className="staff-select">
             <option value="all">All Categories</option>
@@ -155,13 +174,19 @@ export default function StaffDashboard() {
                     <td className="complaint-id">{c.id}</td>
                     <td className="td-title">{c.title.substring(0, 40)}{c.title.length > 40 ? '...' : ''}</td>
                     <td>{c.category}</td>
-                    <td>{c.locality.substring(0, 20)}...</td>
+                    <td>{c.locality.substring(0, 20)}{c.locality.length > 20 ? '...' : ''}</td>
                     <td><PriorityBadge priority={c.priority} /></td>
                     <td><StatusBadge status={c.status} /></td>
                     <td>{new Date(c.createdAt).toLocaleDateString('en-IN')}</td>
-                    <td>{c.photoDataUrl ? '📷' : '—'}</td>
+                    <td>{c.photoDataUrl || c.staffNotes?.some(note => note.photoDataUrl) ? '📷' : '—'}</td>
                     <td>
-                      <button className="view-btn" onClick={() => { setSelectedComplaint(c); setNewStatus(c.status); }}>
+                      <button className="view-btn" onClick={() => {
+                        setSelectedComplaintId(c.id);
+                        setNewStatus(c.status === 'disputed' || c.status === 'awaiting-confirmation' || c.status === 'resolved' ? 'under-review' : c.status);
+                        setReviewNote('');
+                        setResolutionNote('');
+                        setResolutionPhoto(undefined);
+                      }}>
                         View
                       </button>
                     </td>
@@ -176,9 +201,9 @@ export default function StaffDashboard() {
 
       {/* Staff Detail Modal */}
       {selectedComplaint && (
-        <div className="modal-overlay" onClick={() => setSelectedComplaint(null)}>
+        <div className="modal-overlay" onClick={() => setSelectedComplaintId(null)}>
           <div className="modal-content staff-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedComplaint(null)}>✕</button>
+            <button className="modal-close" onClick={() => setSelectedComplaintId(null)}>✕</button>
 
             <div className="modal-header">
               <span className="complaint-id">{selectedComplaint.id}</span>
@@ -198,68 +223,90 @@ export default function StaffDashboard() {
               <p>{selectedComplaint.description}</p>
             </div>
 
-            {selectedComplaint.photoDataUrl && (
-              <div className="modal-section">
-                <h4>📷 Citizen Photo Evidence</h4>
-                <img src={selectedComplaint.photoDataUrl} alt="Evidence" className="staff-evidence-img" />
-              </div>
-            )}
-
             {selectedComplaint.aiSummary && (
               <div className="ai-analysis-panel">
                 <div className="ai-panel-header">
                   <span className="ai-icon">🤖</span><h4>AI Analysis</h4>
-                  <span className="ai-demo-badge">Demo Mode</span>
+                  <span className="ai-demo-badge">Rule-based demo</span>
                 </div>
                 <p className="ai-value">{selectedComplaint.aiSummary}</p>
                 {selectedComplaint.aiSuggestion && <p className="ai-suggestion">{selectedComplaint.aiSuggestion}</p>}
               </div>
             )}
 
-            {/* Staff Notes History */}
-            {selectedComplaint.staffNotes && selectedComplaint.staffNotes.length > 0 && (
-              <div className="modal-section">
-                <h4>📝 Staff Notes History</h4>
-                <div className="notes-history">
-                  {selectedComplaint.staffNotes.map((n, i) => (
-                    <div key={i} className="note-item">
-                      <div className="note-meta">
-                        <strong>{n.by}</strong>
-                        <span>{new Date(n.at).toLocaleString('en-IN')}</span>
-                        {n.statusChange && <StatusBadge status={n.statusChange} />}
-                      </div>
-                      <p>{n.note}</p>
-                    </div>
-                  ))}
+            <div className="modal-section">
+              <h4>📝 Complaint History & Evidence</h4>
+              <div className="notes-history">
+                <div className="note-item">
+                  <div className="note-meta"><strong>Original report · {selectedComplaint.submittedBy}</strong><span>{new Date(selectedComplaint.createdAt).toLocaleString('en-IN')}</span><StatusBadge status="submitted" /></div>
+                  <p>{selectedComplaint.description}</p>
+                  {selectedComplaint.photoDataUrl && <img src={selectedComplaint.photoDataUrl} alt="Original citizen evidence" className="staff-evidence-img" />}
                 </div>
+                {selectedComplaint.staffNotes?.map((n, i) => (
+                  <div key={i} className="note-item">
+                    <div className="note-meta">
+                      <strong>{n.by}</strong>
+                      <span>{new Date(n.at).toLocaleString('en-IN')}</span>
+                      {n.statusChange && <StatusBadge status={n.statusChange} />}
+                    </div>
+                    <p>{n.note}</p>
+                    {n.photoDataUrl && <img src={n.photoDataUrl} alt="Resolution after-photo evidence" className="staff-evidence-img" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Staff Actions */}
+            {selectedComplaint.status !== 'awaiting-confirmation' && selectedComplaint.status !== 'resolved' && (
+              <div className="staff-actions">
+                <h4>⚡ Staff Actions</h4>
+                <div className="action-row">
+                  <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as StaffProgressStatus)} className="staff-select">
+                    {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                  <button
+                    className={`urgent-btn ${selectedComplaint.flaggedUrgent ? 'flagged' : ''}`}
+                    onClick={() => toggleUrgent(selectedComplaint.id)}
+                  >
+                    🚩 {selectedComplaint.flaggedUrgent ? 'Unflag' : 'Flag Urgent'}
+                  </button>
+                </div>
+                <textarea
+                  placeholder="Add a review note (optional)..."
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  rows={2}
+                  className="review-note-input"
+                />
+                <button className="submit-btn" onClick={handleStatusUpdate}>
+                  ✅ Update Status
+                </button>
               </div>
             )}
 
-            {/* Staff Actions */}
-            <div className="staff-actions">
-              <h4>⚡ Staff Actions</h4>
-              <div className="action-row">
-                <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as ComplaintStatus)} className="staff-select">
-                  {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-                <button
-                  className={`urgent-btn ${selectedComplaint.flaggedUrgent ? 'flagged' : ''}`}
-                  onClick={() => toggleUrgent(selectedComplaint.id)}
-                >
-                  🚩 {selectedComplaint.flaggedUrgent ? 'Unflag' : 'Flag Urgent'}
+            {['under-review', 'in-progress', 'disputed'].includes(selectedComplaint.status) && (
+              <div className="staff-actions resolution-proposal">
+                <h4>📸 Propose Resolution for Citizen Review</h4>
+                <p>Describe the work completed. The complaint will remain open until its citizen confirms or disputes the proposed resolution.</p>
+                <textarea
+                  placeholder="Resolution note (required): what was inspected or repaired?"
+                  value={resolutionNote}
+                  onChange={(e) => setResolutionNote(e.target.value)}
+                  rows={3}
+                  className="review-note-input"
+                />
+                <CameraCapture label="📸 After-photo evidence (optional)" onCapture={setResolutionPhoto} onRemove={() => setResolutionPhoto(undefined)} currentPhoto={resolutionPhoto} />
+                <button className="submit-btn" onClick={handleProposeResolution} disabled={!resolutionNote.trim()}>
+                  👀 Send to Citizen for Review
                 </button>
               </div>
-              <textarea
-                placeholder="Add a review note (optional)..."
-                value={reviewNote}
-                onChange={(e) => setReviewNote(e.target.value)}
-                rows={2}
-                className="review-note-input"
-              />
-              <button className="submit-btn" onClick={handleStatusUpdate}>
-                ✅ Update Status
-              </button>
-            </div>
+            )}
+            {selectedComplaint.status === 'awaiting-confirmation' && (
+              <div className="resolution-status-note">Waiting for the reporting citizen to confirm or dispute this resolution.</div>
+            )}
+            {selectedComplaint.status === 'resolved' && (
+              <div className="resolution-status-note">The reporting citizen confirmed that the issue appears fixed.</div>
+            )}
           </div>
         </div>
       )}

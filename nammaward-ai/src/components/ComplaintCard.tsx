@@ -37,7 +37,7 @@ export default function ComplaintCard({ complaint, onClick }: ComplaintCardProps
       </div>
       <div className="complaint-footer">
         <PriorityBadge priority={complaint.priority} />
-        <span className="complaint-upvotes">👍 {complaint.upvotes}</span>
+        <span className="complaint-upvotes">🧪 Demo count: {complaint.upvotes}</span>
       </div>
     </div>
   );

@@ -1,7 +1,9 @@
-export type ComplaintStatus = 'submitted' | 'under-review' | 'in-progress' | 'resolved' | 'escalated';
+export type ComplaintStatus = 'submitted' | 'under-review' | 'in-progress' | 'awaiting-confirmation' | 'disputed' | 'resolved' | 'escalated';
+export type StaffProgressStatus = 'submitted' | 'under-review' | 'in-progress' | 'escalated';
 export type ComplaintCategory = 'garbage' | 'pothole' | 'drainage' | 'streetlight' | 'water-supply' | 'other';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
 export type UserRole = 'citizen' | 'staff';
+export type ComplaintHistoryKind = 'staff-update' | 'resolution-proposal' | 'citizen-confirmation' | 'citizen-dispute';
 
 export interface User {
   id: string;
@@ -16,6 +18,8 @@ export interface StaffNote {
   by: string;
   at: string;
   statusChange?: ComplaintStatus;
+  kind?: ComplaintHistoryKind;
+  photoDataUrl?: string;
 }
 
 export interface Complaint {

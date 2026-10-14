@@ -7,9 +7,10 @@ interface CameraCaptureProps {
   onCapture: (dataUrl: string) => void;
   onRemove: () => void;
   currentPhoto?: string;
+  label?: string;
 }
 
-export default function CameraCapture({ onCapture, onRemove, currentPhoto }: CameraCaptureProps) {
+export default function CameraCapture({ onCapture, onRemove, currentPhoto, label = '📸 Add Photo Evidence (Optional)' }: CameraCaptureProps) {
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState('');
@@ -137,7 +138,7 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto }: Cam
   if (currentPhoto) {
     return (
       <div className="camera-section">
-        <label className="camera-label">📸 Photo Evidence</label>
+        <label className="camera-label">{label}</label>
         <div className="photo-preview">
           <img src={currentPhoto} alt="Complaint photo" className="preview-img" />
           <div className="photo-actions">
@@ -155,7 +156,7 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto }: Cam
 
   return (
     <div className="camera-section">
-      <label className="camera-label">📸 Add Photo Evidence (Optional)</label>
+      <label className="camera-label">{label}</label>
 
       {cameraError && <div className="camera-error">⚠️ {cameraError}</div>}
 

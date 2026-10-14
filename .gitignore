@@ -1,1 +1,14 @@
-.vercel
+# Dependencies and generated files
+node_modules/
+dist/
+build/
+coverage/
+
+# Local environment values (keep the example template trackable)
+.env
+.env.*
+!.env.example
+
+# Deployment metadata and logs
+.vercel/
+*.log

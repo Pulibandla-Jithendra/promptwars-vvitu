@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Complaint, ComplaintStatus, StaffNote } from '../types';
+import { Complaint, ComplaintStatus, StaffNote, StaffProgressStatus } from '../types';
 import { sampleComplaints } from '../data/sampleComplaints';
 
 const STORAGE_KEY = 'nammaward_complaints';
@@ -12,10 +12,27 @@ function loadComplaints(): Complaint[] {
       const parsed = JSON.parse(saved) as Complaint[];
       // Reattach photo data from separate storage
       const photos = loadPhotos();
-      return parsed.map(c => ({
+      const hydrated = parsed.map(c => ({
         ...c,
-        photoDataUrl: photos[c.id] || c.photoDataUrl,
+        photoDataUrl: photos[`${c.id}:report`] || photos[c.id] || c.photoDataUrl,
+        staffNotes: c.staffNotes?.map((note, index) => ({
+          ...note,
+          photoDataUrl: photos[`${c.id}:note:${index}`] || note.photoDataUrl,
+        })),
       }));
+      return hydrated.map(c => {
+        const legacyProposal = c.status === 'resolved'
+          ? [...(c.staffNotes || [])].reverse().find(note => note.statusChange === 'resolved' && !note.kind)
+          : undefined;
+        if (!legacyProposal) return c;
+        return {
+          ...c,
+          status: 'awaiting-confirmation' as ComplaintStatus,
+          staffNotes: c.staffNotes?.map(note => note === legacyProposal
+            ? { ...note, statusChange: 'awaiting-confirmation', kind: 'resolution-proposal' as const }
+            : { ...note, kind: note.kind || 'staff-update' as const }),
+        };
+      });
     }
   } catch { /* ignore */ }
   return sampleComplaints;
@@ -29,14 +46,19 @@ function loadPhotos(): Record<string, string> {
 }
 
 function saveComplaints(complaints: Complaint[]) {
-  // Store complaints without photoDataUrl to save space
-  const withoutPhotos = complaints.map(({ photoDataUrl, ...rest }) => rest);
+  // Store photos separately so complaint history stays readable and images can be replaced independently.
+  const withoutPhotos = complaints.map(({ photoDataUrl, staffNotes, ...rest }) => ({
+    ...rest,
+    staffNotes: staffNotes?.map(({ photoDataUrl: _photoDataUrl, ...note }) => note),
+  }));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutPhotos));
 
-  // Store photos separately using complaint IDs as keys
   const photos: Record<string, string> = {};
   complaints.forEach(c => {
-    if (c.photoDataUrl) photos[c.id] = c.photoDataUrl;
+    if (c.photoDataUrl) photos[`${c.id}:report`] = c.photoDataUrl;
+    c.staffNotes?.forEach((note, index) => {
+      if (note.photoDataUrl) photos[`${c.id}:note:${index}`] = note.photoDataUrl;
+    });
   });
   try {
     localStorage.setItem(PHOTO_STORAGE_KEY, JSON.stringify(photos));
@@ -48,7 +70,9 @@ function saveComplaints(complaints: Complaint[]) {
 interface ComplaintContextType {
   complaints: Complaint[];
   addComplaint: (complaint: Complaint) => void;
-  updateStatus: (id: string, status: ComplaintStatus, note?: StaffNote) => void;
+  updateStatus: (id: string, status: StaffProgressStatus, note?: StaffNote) => void;
+  proposeResolution: (id: string, note: string, photoDataUrl: string | undefined, by: string) => void;
+  reviewResolution: (id: string, confirmed: boolean, note: string | undefined, by: string) => void;
   toggleUrgent: (id: string) => void;
   getComplaintById: (id: string) => Complaint | undefined;
   getComplaintsByUser: (userId: string) => Complaint[];
@@ -72,15 +96,55 @@ export function ComplaintProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const updateStatus = useCallback((id: string, status: ComplaintStatus, note?: StaffNote) => {
+  const updateStatus = useCallback((id: string, status: StaffProgressStatus, note?: StaffNote) => {
     setComplaints(prev => {
       const updated = prev.map(c => {
         if (c.id !== id) return c;
         return {
           ...c,
           status,
-          staffNotes: note ? [...(c.staffNotes || []), note] : c.staffNotes,
+          staffNotes: note ? [...(c.staffNotes || []), { ...note, kind: note.kind || 'staff-update' }] : c.staffNotes,
         };
+      });
+      saveComplaints(updated);
+      return updated;
+    });
+  }, []);
+
+  const proposeResolution = useCallback((id: string, note: string, photoDataUrl: string | undefined, by: string) => {
+    const trimmedNote = note.trim();
+    if (!trimmedNote) return;
+    setComplaints(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== id || !['in-progress', 'disputed', 'under-review'].includes(c.status)) return c;
+        const history: StaffNote = {
+          note: trimmedNote,
+          by,
+          at: new Date().toISOString(),
+          statusChange: 'awaiting-confirmation',
+          kind: 'resolution-proposal',
+          photoDataUrl,
+        };
+        return { ...c, status: 'awaiting-confirmation' as ComplaintStatus, staffNotes: [...(c.staffNotes || []), history] };
+      });
+      saveComplaints(updated);
+      return updated;
+    });
+  }, []);
+
+  const reviewResolution = useCallback((id: string, confirmed: boolean, note: string | undefined, by: string) => {
+    setComplaints(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== id || c.status !== 'awaiting-confirmation') return c;
+        const status: ComplaintStatus = confirmed ? 'resolved' : 'disputed';
+        const history: StaffNote = {
+          note: note?.trim() || (confirmed ? 'The citizen confirmed that the issue appears fixed.' : 'The citizen reported that the issue still exists.'),
+          by,
+          at: new Date().toISOString(),
+          statusChange: status,
+          kind: confirmed ? 'citizen-confirmation' : 'citizen-dispute',
+        };
+        return { ...c, status, staffNotes: [...(c.staffNotes || []), history] };
       });
       saveComplaints(updated);
       return updated;
@@ -106,7 +170,7 @@ export function ComplaintProvider({ children }: { children: ReactNode }) {
   }, [complaints]);
 
   return (
-    <ComplaintContext.Provider value={{ complaints, addComplaint, updateStatus, toggleUrgent, getComplaintById, getComplaintsByUser }}>
+    <ComplaintContext.Provider value={{ complaints, addComplaint, updateStatus, proposeResolution, reviewResolution, toggleUrgent, getComplaintById, getComplaintsByUser }}>
       {children}
     </ComplaintContext.Provider>
   );

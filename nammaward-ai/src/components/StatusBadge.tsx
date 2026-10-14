@@ -4,6 +4,8 @@ const statusConfig: Record<ComplaintStatus, { label: string; className: string }
   'submitted': { label: 'Submitted', className: 'badge-submitted' },
   'under-review': { label: 'Under Review', className: 'badge-review' },
   'in-progress': { label: 'In Progress', className: 'badge-progress' },
+  'awaiting-confirmation': { label: 'Awaiting Citizen Review', className: 'badge-review' },
+  'disputed': { label: 'Citizen Disputed', className: 'badge-escalated' },
   'resolved': { label: 'Resolved', className: 'badge-resolved' },
   'escalated': { label: 'Escalated', className: 'badge-escalated' },
 };

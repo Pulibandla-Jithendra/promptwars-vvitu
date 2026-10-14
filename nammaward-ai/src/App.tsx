@@ -79,7 +79,7 @@ function CitizenDashboard() {
       {/* Success toast */}
       {showSuccess && (
         <div className="success-toast">
-          ✅ Complaint <strong>{showSuccess}</strong> submitted successfully! AI analysis complete.
+          ✅ Complaint <strong>{showSuccess}</strong> submitted successfully. Rule-based demo triage added.
         </div>
       )}
 

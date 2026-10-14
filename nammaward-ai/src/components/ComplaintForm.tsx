@@ -166,7 +166,7 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
 
           <button type="submit" className="submit-btn" disabled={isSubmitting}>
             {isSubmitting ? (
-              <><span className="spinner"></span> AI is analyzing your report...</>
+              <><span className="spinner"></span> Preparing your report...</>
             ) : (
               '🚀 Submit Report'
             )}
