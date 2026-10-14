@@ -50,4 +50,6 @@ export interface DashboardStats {
   critical: number;
   submitted?: number;
   underReview?: number;
+  awaitingConfirmation?: number;
+  disputed?: number;
 }

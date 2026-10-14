@@ -97,11 +97,19 @@ npm run build
 npm run preview
 ```
 
+Run the automated component and workflow suite with:
+
+```bash
+npm run test -- --run
+```
+
+Vitest runs in jsdom with React Testing Library and user-event. The suite covers report validation and creation, staff status/resolution updates, citizen confirmation and dispute, history and photo persistence, status counts, ownership checks, malformed browser state, upload type/size limits and an axe-core scan of the report dialog.
+
 No `.env` file is needed. `.env` and `.env.*` are ignored; `.env.example` remains trackable if a future integration introduces documented, non-secret variable names.
 
 ## Verification
 
-There is no configured lint or automated test script. For this revision, `npm ci` completed and `npm run build` passed (TypeScript check and Vite production bundle). `git diff --check` also passed. The complaint workflow was reviewed in source, but no interactive browser end-to-end run was available in this environment.
+Final verification for this revision: `npm run test -- --run` passed **12/12 tests across 3 files**; `npm run build` passed the TypeScript check and Vite production build; `git diff --check` passed. The axe-core DOM scan reported no violations. jsdom cannot evaluate browser-rendered color contrast or physical layout, so those still need browser review. No lint script is configured. Component tests use jsdom and do not replace manual assistive-technology checks or a real-browser responsive review; mobile and desktop CSS breakpoints were inspected, but no browser viewport run was available.
 
 To manually walk through the flow in one browser, sign in as the citizen, submit a complaint, sign out, and sign in as staff. Move it to **In Progress**, add a review note, propose a resolution with a required note and optional after-photo, and send it for citizen review. Sign back in as the citizen: dispute with a reason to return it to the staff queue, or confirm that it appears fixed. The seeded complaint `NW-2026-006` is already awaiting citizen review for a shorter confirmation demo.
 

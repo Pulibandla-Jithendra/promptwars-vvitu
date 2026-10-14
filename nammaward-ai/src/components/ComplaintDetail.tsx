@@ -3,6 +3,7 @@ import { Complaint, ComplaintHistoryKind } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useComplaints } from '../context/ComplaintContext';
 import { StatusBadge, PriorityBadge } from './StatusBadge';
+import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 interface ComplaintDetailProps {
   complaint: Complaint;
@@ -18,6 +19,7 @@ const historyLabels: Record<ComplaintHistoryKind, string> = {
 
 export default function ComplaintDetail({ complaint, onClose }: ComplaintDetailProps) {
   const { user } = useAuth();
+  const dialogRef = useDialogAccessibility<HTMLDivElement>(true, onClose);
   const { complaints, reviewResolution } = useComplaints();
   const current = complaints.find(c => c.id === complaint.id) || complaint;
   const [reviewNote, setReviewNote] = useState('');
@@ -41,8 +43,8 @@ export default function ComplaintDetail({ complaint, onClose }: ComplaintDetailP
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>✕</button>
+      <div ref={dialogRef} className="modal-content" role="dialog" aria-modal="true" aria-label="Complaint details" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" aria-label="Close complaint details" onClick={onClose}>✕</button>
 
         <div className="modal-header">
           <span className="complaint-id">{current.id}</span>

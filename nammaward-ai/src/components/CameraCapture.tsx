@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 interface CameraCaptureProps {
   onCapture: (dataUrl: string) => void;
@@ -112,21 +112,23 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto, label
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!ACCEPTED_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
       setCameraError('Please select a valid image file (JPEG, PNG, WebP)');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setCameraError('Image must be 5 MB or smaller. Please choose a smaller image.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setProcessing(true);
     setCameraError('');
     try {
-      if (file.size > MAX_FILE_SIZE) {
-        const compressed = await compressImage(file);
-        onCapture(compressed);
-      } else {
-        const compressed = await compressImage(file);
-        onCapture(compressed);
-      }
+      const compressed = await compressImage(file);
+      onCapture(compressed);
     } catch {
       setCameraError('Failed to process image. Please try again.');
     }
@@ -138,7 +140,7 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto, label
   if (currentPhoto) {
     return (
       <div className="camera-section">
-        <label className="camera-label">{label}</label>
+        <p className="camera-label">{label}</p>
         <div className="photo-preview">
           <img src={currentPhoto} alt="Complaint photo" className="preview-img" />
           <div className="photo-actions">
@@ -158,12 +160,12 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto, label
     <div className="camera-section">
       <label className="camera-label">{label}</label>
 
-      {cameraError && <div className="camera-error">⚠️ {cameraError}</div>}
+      {cameraError && <div className="camera-error" role="alert">⚠️ {cameraError}</div>}
 
       {showCamera ? (
         <div className="camera-live">
           <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <canvas ref={canvasRef} className="visually-hidden" />
           <div className="camera-controls">
             <button type="button" className="capture-btn" onClick={capturePhoto}>
               📷 Capture
@@ -184,10 +186,10 @@ export default function CameraCapture({ onCapture, onRemove, currentPhoto, label
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               capture="environment"
               onChange={handleFileSelect}
-              style={{ display: 'none' }}
+              className="visually-hidden"
             />
           </label>
         </div>

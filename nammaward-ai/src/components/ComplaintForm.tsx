@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Complaint, ComplaintCategory, Priority } from '../types';
 import { useAuth } from '../context/AuthContext';
 import CameraCapture from './CameraCapture';
+import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 interface ComplaintFormProps {
   onSubmit: (complaint: Complaint) => void;
@@ -19,6 +20,7 @@ const categoryOptions: { value: ComplaintCategory; label: string }[] = [
 
 export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps) {
   const { user } = useAuth();
+  const dialogRef = useDialogAccessibility<HTMLDivElement>(true, onClose);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ComplaintCategory>('garbage');
@@ -31,9 +33,12 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = 'Please enter a title';
     if (title.trim().length > 0 && title.trim().length < 10) newErrors.title = 'Title must be at least 10 characters';
+    if (title.trim().length > 120) newErrors.title = 'Title must be 120 characters or fewer';
     if (!description.trim()) newErrors.description = 'Please describe the issue';
     if (description.trim().length > 0 && description.trim().length < 20) newErrors.description = 'Description must be at least 20 characters';
+    if (description.trim().length > 2000) newErrors.description = 'Description must be 2,000 characters or fewer';
     if (!locality.trim()) newErrors.locality = 'Please enter the locality';
+    if (locality.trim().length > 100) newErrors.locality = 'Locality must be 100 characters or fewer';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -99,12 +104,12 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content form-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>✕</button>
+      <div ref={dialogRef} className="modal-content form-modal" role="dialog" aria-modal="true" aria-label="Report a Civic Issue" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" aria-label="Close report form" onClick={onClose}>✕</button>
         <h2 className="form-title">📝 Report a Civic Issue</h2>
         <p className="form-subtitle">Help improve your ward by reporting issues in your locality</p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="title">Issue Title *</label>
             <input
@@ -114,8 +119,12 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className={errors.title ? 'input-error' : ''}
+              required
+              maxLength={120}
+              aria-invalid={Boolean(errors.title)}
+              aria-describedby={errors.title ? 'title-error' : undefined}
             />
-            {errors.title && <span className="error-text">{errors.title}</span>}
+            {errors.title && <span className="error-text" id="title-error" role="alert">{errors.title}</span>}
           </div>
 
           <div className="form-group">
@@ -124,6 +133,7 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value as ComplaintCategory)}
+              required
             >
               {categoryOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -140,8 +150,12 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
               value={locality}
               onChange={(e) => setLocality(e.target.value)}
               className={errors.locality ? 'input-error' : ''}
+              required
+              maxLength={100}
+              aria-invalid={Boolean(errors.locality)}
+              aria-describedby={errors.locality ? 'locality-error' : undefined}
             />
-            {errors.locality && <span className="error-text">{errors.locality}</span>}
+            {errors.locality && <span className="error-text" id="locality-error" role="alert">{errors.locality}</span>}
           </div>
 
           <div className="form-group">
@@ -153,8 +167,12 @@ export default function ComplaintForm({ onSubmit, onClose }: ComplaintFormProps)
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className={errors.description ? 'input-error' : ''}
+              required
+              maxLength={2000}
+              aria-invalid={Boolean(errors.description)}
+              aria-describedby={errors.description ? 'description-error' : undefined}
             />
-            {errors.description && <span className="error-text">{errors.description}</span>}
+            {errors.description && <span className="error-text" id="description-error" role="alert">{errors.description}</span>}
           </div>
 
           {/* Camera Capture */}

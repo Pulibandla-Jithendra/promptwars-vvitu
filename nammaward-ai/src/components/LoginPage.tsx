@@ -103,7 +103,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && <div className="login-error">❌ {error}</div>}
+          {error && <div className="login-error" role="alert">❌ {error}</div>}
 
           <button type="submit" className="submit-btn" disabled={loading}>
             {loading ? <><span className="spinner"></span> Signing in...</> : '🔐 Sign In'}
@@ -121,12 +121,12 @@ export default function LoginPage() {
         <div className="demo-credentials">
           <h4>🔑 Demo Credentials</h4>
           <div className="demo-grid">
-            <div className="demo-item" onClick={() => fillDemo('citizen')}>
+            <button type="button" className="demo-item" onClick={() => fillDemo('citizen')}>
               <strong>Citizen:</strong> citizen@demo.com / citizen123
-            </div>
-            <div className="demo-item" onClick={() => fillDemo('staff')}>
+            </button>
+            <button type="button" className="demo-item" onClick={() => fillDemo('staff')}>
               <strong>Staff:</strong> staff@demo.com / staff123
-            </div>
+            </button>
           </div>
           <p className="demo-note">
             ⚠️ Demo authentication only. Real production deployment requires secure server-side authentication and authorization.

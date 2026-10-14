@@ -38,6 +38,8 @@ function CitizenDashboard() {
     resolved: complaints.filter((c) => c.status === 'resolved').length,
     inProgress: complaints.filter((c) => c.status === 'in-progress').length,
     critical: complaints.filter((c) => c.priority === 'critical').length,
+    awaitingConfirmation: complaints.filter((c) => c.status === 'awaiting-confirmation').length,
+    disputed: complaints.filter((c) => c.status === 'disputed').length,
   }), [complaints]);
 
   const handleNewComplaint = (complaint: Complaint) => {
@@ -66,7 +68,7 @@ function CitizenDashboard() {
             <button className="report-btn" onClick={() => setShowForm(true)}>
               ➕ Report
             </button>
-            <button className="logout-btn" onClick={logout}>🚪</button>
+            <button className="logout-btn" onClick={logout} aria-label="Sign out">🚪</button>
           </div>
         </div>
       </header>
@@ -78,7 +80,7 @@ function CitizenDashboard() {
 
       {/* Success toast */}
       {showSuccess && (
-        <div className="success-toast">
+        <div className="success-toast" role="status" aria-live="polite">
           ✅ Complaint <strong>{showSuccess}</strong> submitted successfully. Rule-based demo triage added.
         </div>
       )}

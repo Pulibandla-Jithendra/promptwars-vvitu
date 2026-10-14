@@ -4,6 +4,7 @@ import { useComplaints } from '../context/ComplaintContext';
 import { Complaint, ComplaintCategory, ComplaintStatus, DashboardStats, StaffProgressStatus } from '../types';
 import { StatusBadge, PriorityBadge } from './StatusBadge';
 import CameraCapture from './CameraCapture';
+import { useDialogAccessibility } from '../hooks/useDialogAccessibility';
 
 const statusOptions: { value: StaffProgressStatus; label: string }[] = [
   { value: 'submitted', label: '📥 Submitted' },
@@ -24,6 +25,7 @@ export default function StaffDashboard() {
   const { complaints, updateStatus, proposeResolution, toggleUrgent } = useComplaints();
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const selectedComplaint = complaints.find(c => c.id === selectedComplaintId) || null;
+  const dialogRef = useDialogAccessibility<HTMLDivElement>(Boolean(selectedComplaint), () => setSelectedComplaintId(null));
   const [filterStatus, setFilterStatus] = useState<ComplaintStatus | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ComplaintCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,9 +37,10 @@ export default function StaffDashboard() {
   const stats: DashboardStats = useMemo(() => ({
     total: complaints.length,
     submitted: complaints.filter(c => c.status === 'submitted').length,
-    underReview: complaints.filter(c => c.status === 'under-review' || c.status === 'disputed').length,
+    underReview: complaints.filter(c => c.status === 'under-review').length,
     inProgress: complaints.filter(c => c.status === 'in-progress').length,
     resolved: complaints.filter(c => c.status === 'resolved').length,
+    disputed: complaints.filter(c => c.status === 'disputed').length,
     critical: complaints.filter(c => c.priority === 'critical' || c.flaggedUrgent).length,
   }), [complaints]);
 
@@ -96,6 +99,10 @@ export default function StaffDashboard() {
       <main className="main-content">
         {/* Staff Stats */}
         <div className="stats-grid staff-stats">
+          <div className="stat-card" style={{ borderLeft: '4px solid #dc2626' }}>
+            <div className="stat-icon" style={{ background: '#fef2f2' }}>↩</div>
+            <div className="stat-info"><span className="stat-value">{stats.disputed}</span><span className="stat-label">Citizen Disputed</span></div>
+          </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>📋</div>
             <div className="stat-info"><span className="stat-value">{stats.total}</span><span className="stat-label">Total</span></div>
@@ -106,7 +113,7 @@ export default function StaffDashboard() {
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
             <div className="stat-icon" style={{ background: '#fffbeb' }}>🔍</div>
-                  <div className="stat-info"><span className="stat-value">{stats.underReview}</span><span className="stat-label">Reviewing / disputed</span></div>
+                  <div className="stat-info"><span className="stat-value">{stats.underReview}</span><span className="stat-label">Under Review</span></div>
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>🔄</div>
@@ -118,7 +125,7 @@ export default function StaffDashboard() {
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #0ea5e9' }}>
             <div className="stat-icon" style={{ background: '#f0f9ff' }}>👀</div>
-            <div className="stat-info"><span className="stat-value">{complaints.filter(c => c.status === 'awaiting-confirmation').length}</span><span className="stat-label">Awaiting citizen</span></div>
+            <div className="stat-info"><span className="stat-value">{complaints.filter(c => c.status === 'awaiting-confirmation').length}</span><span className="stat-label">Awaiting Citizen Review</span></div>
           </div>
           <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
             <div className="stat-icon" style={{ background: '#fef2f2' }}>🚨</div>
@@ -130,16 +137,17 @@ export default function StaffDashboard() {
         <div className="staff-filters">
           <input
             type="text"
+            aria-label="Search complaints by ID, title or locality"
             placeholder="🔍 Search by ID, title or locality..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="staff-search"
           />
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="staff-select">
+          <select aria-label="Filter complaints by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as ComplaintStatus | 'all')} className="staff-select">
             <option value="all">All Statuses</option>
             {filterStatusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as any)} className="staff-select">
+          <select aria-label="Filter complaints by category" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as ComplaintCategory | 'all')} className="staff-select">
             <option value="all">All Categories</option>
             <option value="garbage">🗑️ Garbage</option>
             <option value="pothole">🕳️ Potholes</option>
@@ -180,7 +188,7 @@ export default function StaffDashboard() {
                     <td>{new Date(c.createdAt).toLocaleDateString('en-IN')}</td>
                     <td>{c.photoDataUrl || c.staffNotes?.some(note => note.photoDataUrl) ? '📷' : '—'}</td>
                     <td>
-                      <button className="view-btn" onClick={() => {
+                      <button className="view-btn" aria-label={`View complaint ${c.id}`} onClick={() => {
                         setSelectedComplaintId(c.id);
                         setNewStatus(c.status === 'disputed' || c.status === 'awaiting-confirmation' || c.status === 'resolved' ? 'under-review' : c.status);
                         setReviewNote('');
@@ -202,8 +210,8 @@ export default function StaffDashboard() {
       {/* Staff Detail Modal */}
       {selectedComplaint && (
         <div className="modal-overlay" onClick={() => setSelectedComplaintId(null)}>
-          <div className="modal-content staff-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedComplaintId(null)}>✕</button>
+          <div ref={dialogRef} className="modal-content staff-modal" role="dialog" aria-modal="true" aria-label="Staff complaint details" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" aria-label="Close staff complaint details" onClick={() => setSelectedComplaintId(null)}>✕</button>
 
             <div className="modal-header">
               <span className="complaint-id">{selectedComplaint.id}</span>
@@ -261,7 +269,7 @@ export default function StaffDashboard() {
               <div className="staff-actions">
                 <h4>⚡ Staff Actions</h4>
                 <div className="action-row">
-                  <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as StaffProgressStatus)} className="staff-select">
+                  <select aria-label="New complaint status" value={newStatus} onChange={(e) => setNewStatus(e.target.value as StaffProgressStatus)} className="staff-select">
                     {statusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                   <button
@@ -272,6 +280,7 @@ export default function StaffDashboard() {
                   </button>
                 </div>
                 <textarea
+                  aria-label="Add a review note"
                   placeholder="Add a review note (optional)..."
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
@@ -289,6 +298,7 @@ export default function StaffDashboard() {
                 <h4>📸 Propose Resolution for Citizen Review</h4>
                 <p>Describe the work completed. The complaint will remain open until its citizen confirms or disputes the proposed resolution.</p>
                 <textarea
+                  aria-label="Resolution note (required)"
                   placeholder="Resolution note (required): what was inspected or repaired?"
                   value={resolutionNote}
                   onChange={(e) => setResolutionNote(e.target.value)}

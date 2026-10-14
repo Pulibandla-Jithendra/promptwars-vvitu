@@ -11,4 +11,4 @@ npm ci
 npm run dev
 ```
 
-Run `npm run build` to type-check and create the production bundle. The current project has no configured lint or automated test script. The application uses browser-local demo data and does not require environment variables.
+Run `npm run test -- --run` for the automated component/workflow suite and `npm run build` to type-check and create the production bundle. No lint script is configured. The application uses browser-local demo data and does not require environment variables.

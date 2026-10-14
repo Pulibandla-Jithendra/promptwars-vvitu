@@ -25,8 +25,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = sessionStorage.getItem('nammaward_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = sessionStorage.getItem('nammaward_user');
+      if (!saved) return null;
+      const parsed = JSON.parse(saved) as Partial<User>;
+      // Restore only a canonical demo identity. This guards against malformed or
+      // stale browser state, but is not a production authorization boundary.
+      return parsed.email ? DEMO_ACCOUNTS[parsed.email.toLowerCase()]?.user ?? null : null;
+    } catch {
+      return null;
+    }
   });
 
   const login = useCallback(async (email: string, password: string) => {
@@ -36,13 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!account) return { success: false, error: 'Account not found. Use demo credentials shown below.' };
     if (account.password !== password) return { success: false, error: 'Incorrect password. Check the demo credentials.' };
     setUser(account.user);
-    sessionStorage.setItem('nammaward_user', JSON.stringify(account.user));
+    try { sessionStorage.setItem('nammaward_user', JSON.stringify(account.user)); } catch { /* session storage may be unavailable */ }
     return { success: true };
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
-    sessionStorage.removeItem('nammaward_user');
+    try { sessionStorage.removeItem('nammaward_user'); } catch { /* session storage may be unavailable */ }
   }, []);
 
   const isRole = useCallback((role: UserRole) => user?.role === role, [user]);

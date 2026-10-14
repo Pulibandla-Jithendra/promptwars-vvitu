@@ -4,20 +4,55 @@ import { sampleComplaints } from '../data/sampleComplaints';
 
 const STORAGE_KEY = 'nammaward_complaints';
 const PHOTO_STORAGE_KEY = 'nammaward_photos';
+const PHOTO_DATA_URL = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+
+function isComplaint(value: unknown): value is Complaint {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<Complaint>;
+  return typeof item.id === 'string'
+    && typeof item.title === 'string'
+    && typeof item.description === 'string'
+    && typeof item.locality === 'string'
+    && typeof item.createdAt === 'string'
+    && typeof item.submittedBy === 'string'
+    && ['garbage', 'pothole', 'drainage', 'streetlight', 'water-supply', 'other'].includes(item.category || '')
+    && ['submitted', 'under-review', 'in-progress', 'awaiting-confirmation', 'disputed', 'resolved', 'escalated'].includes(item.status || '')
+    && ['low', 'medium', 'high', 'critical'].includes(item.priority || '')
+    && Array.isArray(item.staffNotes ?? [])
+    && (item.staffNotes ?? []).every(isStaffNote);
+}
+
+function safePhoto(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length <= 8_000_000 && PHOTO_DATA_URL.test(value) ? value : undefined;
+}
+
+function isStaffNote(value: unknown): value is StaffNote {
+  if (!value || typeof value !== 'object') return false;
+  const note = value as Partial<StaffNote>;
+  const statuses = ['submitted', 'under-review', 'in-progress', 'awaiting-confirmation', 'disputed', 'resolved', 'escalated'];
+  const kinds = ['staff-update', 'resolution-proposal', 'citizen-confirmation', 'citizen-dispute'];
+  return typeof note.note === 'string'
+    && typeof note.by === 'string'
+    && typeof note.at === 'string'
+    && (!note.statusChange || statuses.includes(note.statusChange))
+    && (!note.kind || kinds.includes(note.kind));
+}
 
 function loadComplaints(): Complaint[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved) as Complaint[];
+      const parsed: unknown = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return sampleComplaints;
+      const valid = parsed.filter(isComplaint);
       // Reattach photo data from separate storage
       const photos = loadPhotos();
-      const hydrated = parsed.map(c => ({
+      const hydrated = valid.map(c => ({
         ...c,
-        photoDataUrl: photos[`${c.id}:report`] || photos[c.id] || c.photoDataUrl,
+        photoDataUrl: safePhoto(photos[`${c.id}:report`] || photos[c.id] || c.photoDataUrl),
         staffNotes: c.staffNotes?.map((note, index) => ({
           ...note,
-          photoDataUrl: photos[`${c.id}:note:${index}`] || note.photoDataUrl,
+          photoDataUrl: safePhoto(photos[`${c.id}:note:${index}`] || note.photoDataUrl),
         })),
       }));
       return hydrated.map(c => {
@@ -41,7 +76,8 @@ function loadComplaints(): Complaint[] {
 function loadPhotos(): Record<string, string> {
   try {
     const saved = localStorage.getItem(PHOTO_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : {};
+    const parsed: unknown = saved ? JSON.parse(saved) : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string> : {};
   } catch { return {}; }
 }
 
@@ -51,8 +87,6 @@ function saveComplaints(complaints: Complaint[]) {
     ...rest,
     staffNotes: staffNotes?.map(({ photoDataUrl: _photoDataUrl, ...note }) => note),
   }));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutPhotos));
-
   const photos: Record<string, string> = {};
   complaints.forEach(c => {
     if (c.photoDataUrl) photos[`${c.id}:report`] = c.photoDataUrl;
@@ -61,9 +95,10 @@ function saveComplaints(complaints: Complaint[]) {
     });
   });
   try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutPhotos));
     localStorage.setItem(PHOTO_STORAGE_KEY, JSON.stringify(photos));
-  } catch (e) {
-    console.warn('Photo storage failed (likely quota exceeded):', e);
+  } catch {
+    // Keep the in-memory complaint usable when storage is blocked or full.
   }
 }
 
@@ -82,11 +117,6 @@ const ComplaintContext = createContext<ComplaintContextType | null>(null);
 
 export function ComplaintProvider({ children }: { children: ReactNode }) {
   const [complaints, setComplaints] = useState<Complaint[]>(loadComplaints);
-
-  const persist = (updated: Complaint[]) => {
-    setComplaints(updated);
-    saveComplaints(updated);
-  };
 
   const addComplaint = useCallback((complaint: Complaint) => {
     setComplaints(prev => {

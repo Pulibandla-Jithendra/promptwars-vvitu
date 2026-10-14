@@ -6,6 +6,8 @@ interface StatsCardsProps {
 
 export default function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
+    { label: 'Awaiting Citizen Review', value: stats.awaitingConfirmation ?? 0, icon: '◉', color: '#4f46e5', bg: '#eef2ff' },
+    { label: 'Citizen Disputed', value: stats.disputed ?? 0, icon: '↩', color: '#dc2626', bg: '#fef2f2' },
     { label: 'Total Complaints', value: stats.total, icon: '📋', color: '#3b82f6', bg: '#eff6ff' },
     { label: 'Resolved', value: stats.resolved, icon: '✅', color: '#22c55e', bg: '#f0fdf4' },
     { label: 'In Progress', value: stats.inProgress, icon: '🔄', color: '#f59e0b', bg: '#fffbeb' },

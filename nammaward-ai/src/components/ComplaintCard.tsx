@@ -19,7 +19,7 @@ export default function ComplaintCard({ complaint, onClick }: ComplaintCardProps
   const timeAgo = getTimeAgo(complaint.createdAt);
 
   return (
-    <div className="complaint-card" onClick={() => onClick(complaint)}>
+    <button type="button" className="complaint-card" onClick={() => onClick(complaint)} aria-label={`Open complaint ${complaint.id}: ${complaint.title}`}>
       <div className="complaint-header">
         <span className="complaint-id">{complaint.id}</span>
         <StatusBadge status={complaint.status} />
@@ -39,7 +39,7 @@ export default function ComplaintCard({ complaint, onClick }: ComplaintCardProps
         <PriorityBadge priority={complaint.priority} />
         <span className="complaint-upvotes">🧪 Demo count: {complaint.upvotes}</span>
       </div>
-    </div>
+    </button>
   );
 }
 
